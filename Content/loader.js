@@ -50,34 +50,65 @@ class LoaderAnimation {
     }
     
     init() {
-        // 检查是否已经播放过加载动画
-        if (sessionStorage.getItem('loaderShown') === 'true') {
-            // 直接跳过加载动画
+        try {
+            console.log('[Loader] Initializing...');
+            
+            // 使用更可靠的标记系统
+            const loaderCompleted = sessionStorage.getItem('loaderCompleted');
+            const pageLoadTime = Date.now();
+            
+            console.log('[Loader] loaderCompleted:', loaderCompleted);
+            console.log('[Loader] pageLoadTime:', pageLoadTime);
+            
+            // 如果加载动画已完成，直接跳过
+            if (loaderCompleted === 'true') {
+                console.log('[Loader] Skipping loader animation');
+                this.skipLoader();
+                return;
+            }
+            
+            // 记录页面加载时间，防止快速刷新导致的问题
+            sessionStorage.setItem('pageLoadTime', pageLoadTime.toString());
+            console.log('[Loader] Starting loader animation');
+            
+            this.createStars();
+            this.startSequence();
+            this.animate();
+        } catch (error) {
+            console.error('[Loader] Error in init:', error);
+            // 出错时直接跳过加载动画
             this.skipLoader();
-            return;
         }
-        
-        // 标记加载动画已播放
-        sessionStorage.setItem('loaderShown', 'true');
-        
-        this.createStars();
-        this.startSequence();
-        this.animate();
     }
     
     skipLoader() {
-        const loader = document.getElementById('loader');
-        const mainContent = document.getElementById('mainContent');
-        const contentSection = document.getElementById('contentSection');
-        
-        loader.style.display = 'none';
-        mainContent.style.display = 'block';
-        
-        // 立即显示内容区域
-        if (contentSection) {
+        try {
+            console.log('[Loader] skipLoader called');
+            
+            const loader = document.getElementById('loader');
+            const mainContent = document.getElementById('mainContent');
+            const contentSection = document.getElementById('contentSection');
+            
+            loader.style.display = 'none';
+            mainContent.style.display = 'block';
+            
+            // 确保标记已设置
+            sessionStorage.setItem('loaderCompleted', 'true');
+            console.log('[Loader] Set loaderCompleted to true');
+            
+            // 强制重新初始化所有画布
             setTimeout(() => {
-                contentSection.classList.add('visible');
+                console.log('[Loader] Triggering resize and showing content');
+                // 触发窗口resize事件，让所有画布重新计算尺寸
+                window.dispatchEvent(new Event('resize'));
+                
+                // 立即显示内容区域
+                if (contentSection) {
+                    contentSection.classList.add('visible');
+                }
             }, 100);
+        } catch (error) {
+            console.error('[Loader] Error in skipLoader:', error);
         }
     }
     
@@ -132,10 +163,45 @@ class LoaderAnimation {
     }
     
     fadeOut() {
-        const loader = document.getElementById('loader');
-        const mainContent = document.getElementById('mainContent');
-        const contentSection = document.getElementById('contentSection');
+        try {
+            console.log('[Loader] fadeOut called');
+            
+            const loader = document.getElementById('loader');
+            const mainContent = document.getElementById('mainContent');
+            const contentSection = document.getElementById('contentSection');
+            
+            // 检查页面加载时间，防止过快刷新
+            const pageLoadTime = parseInt(sessionStorage.getItem('pageLoadTime') || '0');
+            const currentTime = Date.now();
+            const timeSinceLoad = currentTime - pageLoadTime;
+            
+            console.log('[Loader] pageLoadTime:', pageLoadTime);
+            console.log('[Loader] currentTime:', currentTime);
+            console.log('[Loader] timeSinceLoad:', timeSinceLoad);
+            
+            // 如果页面加载时间小于1秒，说明可能是刚刷新的，不要再刷新
+            const shouldRefresh = timeSinceLoad > 1000 && !sessionStorage.getItem('loaderCompleted');
+            
+            console.log('[Loader] shouldRefresh:', shouldRefresh);
+            
+            if (shouldRefresh) {
+                // 首次完整播放动画后刷新
+                console.log('[Loader] Refreshing page...');
+                sessionStorage.setItem('loaderCompleted', 'true');
+                loader.style.opacity = '0';
+                setTimeout(() => {
+                    location.reload();
+                }, 400);
+                return;
+            }
+            
+            console.log('[Loader] Showing content without refresh');
+        } catch (error) {
+            console.error('[Loader] Error in fadeOut:', error);
+        }
         
+        // 已经刷新过或加载太快，正常显示内容
+        sessionStorage.setItem('loaderCompleted', 'true');
         loader.style.opacity = '0';
         setTimeout(() => {
             loader.style.display = 'none';
@@ -492,6 +558,26 @@ class LoaderAnimation {
     }
 }
 
+// 全局错误捕获
+window.addEventListener('error', function(event) {
+    console.error('[Global Error]', event.error);
+});
+
+window.addEventListener('unhandledrejection', function(event) {
+    console.error('[Unhandled Promise Rejection]', event.reason);
+});
+
 document.addEventListener('DOMContentLoaded', () => {
-    new LoaderAnimation();
+    console.log('[Main] DOMContentLoaded fired');
+    console.log('[Main] Current URL:', window.location.href);
+    console.log('[Main] SessionStorage:', {
+        loaderCompleted: sessionStorage.getItem('loaderCompleted'),
+        pageLoadTime: sessionStorage.getItem('pageLoadTime')
+    });
+    
+    try {
+        new LoaderAnimation();
+    } catch (error) {
+        console.error('[Main] Error creating LoaderAnimation:', error);
+    }
 });
