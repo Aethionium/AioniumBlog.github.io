@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Page</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #00ff00;
+        }
+        .log {
+            margin: 5px 0;
+            padding: 5px;
+            background: #000;
+            border-left: 3px solid #00ff00;
+        }
+        .error {
+            border-left-color: #ff0000;
+            color: #ff0000;
+        }
+    </style>
+</head>
+<body>
+    <h1>GitHub Pages Debug Test</h1>
+    <div id="logs"></div>
+    
+    <script>
+        const logsDiv = document.getElementById('logs');
+        
+        function log(message, isError = false) {
+            const div = document.createElement('div');
+            div.className = 'log' + (isError ? ' error' : '');
+            div.textContent = new Date().toISOString() + ' - ' + message;
+            logsDiv.appendChild(div);
+            console.log(message);
+        }
+        
+        log('Test page loaded');
+        log('Current URL: ' + window.location.href);
+        log('Base URL: ' + window.location.origin);
+        log('Pathname: ' + window.location.pathname);
+        
+        // 测试 sessionStorage
+        try {
+            sessionStorage.setItem('test', 'value');
+            log('SessionStorage: OK');
+        } catch (e) {
+            log('SessionStorage: ERROR - ' + e.message, true);
+        }
+        
+        // 测试文件加载
+        fetch('Content/loader.js')
+            .then(response => {
+                if (response.ok) {
+                    log('loader.js: Found (Status ' + response.status + ')');
+                } else {
+                    log('loader.js: Not Found (Status ' + response.status + ')', true);
+                }
+            })
+            .catch(e => {
+                log('loader.js: Fetch Error - ' + e.message, true);
+            });
+        
+        // 测试刷新
+        const refreshCount = parseInt(sessionStorage.getItem('refreshCount') || '0');
+        log('Refresh count: ' + refreshCount);
+        
+        if (refreshCount < 2) {
+            sessionStorage.setItem('refreshCount', (refreshCount + 1).toString());
+            log('Will refresh in 2 seconds...');
+            setTimeout(() => {
+                location.reload();
+            }, 2000);
+        } else {
+            log('Refresh test complete - no infinite loop!');
+            sessionStorage.removeItem('refreshCount');
+        }
+    </script>
+</body>
+</html>
